@@ -1,0 +1,88 @@
+*
+========================================================
+		      CREATE VIEW FOR PRODUCTS ANALYSIS
+
+  - Gather name , category , sub-category & cost of product
+  - Segment product by revenue to High_performance, Mid-Range, Low-Performance
+  -Aggregate the products
+  	-total order
+  	-total sales
+  	-total quantity
+  	-lifespan(month)
+  -Calculate KPIs
+  	-recency(months since last sale)
+  	-average order revenue 
+  	-average montly revenue
+========================================================
+*/
+CREATE OR ALTER VIEW gold.report_product AS
+WITH base_query AS (
+SELECT 
+p1.order_number,
+p1.order_date,
+p1.customer_key,
+p1.sales_amount,
+p1.quantity,
+p1.product_key,
+p2.product_name,
+p2.category,
+p2.subcategory,
+p2.cost
+FROM gold.fact_sales p1
+LEFT JOIN gold.dim_products p2
+ON p1.product_key = p2.product_key
+WHERE order_date IS NOT NULL
+),
+product_aggregation AS(
+SELECT 
+product_key,
+product_name,
+category,
+subcategory,
+cost,
+DATEDIFF(MONTH,MIN(order_date),MAX(order_date)) AS lifespan,
+MAX(order_date) AS last_sale_date,
+COUNT(DISTINCT(order_number)) AS total_orders,
+COUNT(DISTINCT(customer_key)) AS total_customers,
+SUM(sales_amount) AS total_sales,
+SUM(quantity) AS total_quantity,
+ROUND(AVG(CAST(sales_amount AS FLOAT)/NULLIF(quantity,0)),2) AS average_selling_price
+FROM base_query
+GROUP BY 
+		product_key,
+		product_name,
+		category,
+		subcategory,
+		cost
+)
+SELECT 
+product_key,
+product_name,
+category,
+subcategory,
+cost,
+last_sale_date,
+DATEDIFF(MONTH, last_sale_date,GETDATE()) AS recency_in_month,
+CASE 
+	WHEN total_sales > 50000 THEN 'High Performance'
+	WHEN total_sales > 10000 THEN 'Mid Range'
+	ELSE 'Low Performance'
+END AS product_segment,
+lifespan,
+total_orders,
+total_sales,
+total_quantity,
+total_customers,
+average_selling_price,
+CASE 
+	WHEN total_orders = 0 THEN 0
+	ELSE total_sales/total_orders
+END AS average_order_revenue,
+CASE 
+	WHEN lifespan = 0 THEN 0
+	ELSE total_sales/lifespan
+END AS average_monthly_revenue
+FROM product_aggregation;
+
+--execute the view of product report
+SELECT * FROM gold.report_product
