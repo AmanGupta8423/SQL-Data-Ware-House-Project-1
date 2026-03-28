@@ -1,0 +1,90 @@
+/*
+===========================================================
+            CREATE A VIEW FOR CUSTOMER ANALYSIS
+
+  	-Gather name,age,transaction details of customer
+  	-Segments customer to (VIP,REGULAR,NEW) AND age groups
+  	-Aggregate 
+  		-total_orders
+  		-total_sales
+  		-total quantity purchased
+  		-total products
+  		-lifespan (in months)
+  	-calculate KPIs
+  		-recency(month since last order)
+  		-average order value
+  		-average monthly spend
+=============================================================
+*/
+CREATE OR ALTER VIEW gold.report_customer AS
+WITH base_query AS
+(-- customer details
+SELECT 
+t1.order_number,
+t1.product_key,
+t1.order_date,
+t2.customer_id,
+t1.quantity,
+t2.customer_key,
+t2.customer_number,
+t1.sales_amount,
+CONCAT(t2.first_name,t2.lastname) AS customer_name,
+DATEDIFF(YEAR,t2.birthdate,GETDATE()) AS age
+FROM gold.fact_sales t1
+LEFT JOIN gold.dim_customers t2
+ON t1.customer_key = t2.customer_key
+WHERE t1.order_date IS NOT NULL
+),
+customer_aggregaton AS
+( --customer aggregated 
+SELECT 
+customer_key,
+customer_number,
+customer_name,
+age,
+COUNT(DISTINCT(order_number)) AS  total_orders,
+SUM(sales_amount) AS total_sales,
+SUM(quantity) AS total_quantity,
+COUNT(DISTINCT(product_key)) AS total_product,
+MAX(order_date) AS last_order_date,
+DATEDIFF(MONTH,MIN(order_date),MAX(order_date)) AS lifespan
+FROM base_query
+GROUP BY customer_key,customer_number,customer_name,age
+)
+SELECT 
+customer_key,
+customer_number,
+customer_name,
+age,
+CASE 
+	WHEN age< 20 THEN 'Under20'
+	WHEN age between 20 AND 30 THEN '20-30'
+	WHEN age between 30 AND 40 THEN '30-40'
+	WHEN age between 40 AND 50 THEN '40-50'
+	WHEN age between 50 AND 60 THEN '50-60'
+	WHEN age between 60 AND 70 THEN '60-70'
+	ELSE '70+'
+END AS	age_group,
+total_orders,
+total_sales,
+total_quantity,
+total_product,
+last_order_date,
+DATEDIFF(MONTH, last_order_date,GETDATE()) AS recency_in_month,
+CASE 
+	WHEN total_sales > 5000 AND lifespan >=12 THEN 'VIP'
+	WHEN total_sales <= 5000 AND lifespan >=12 THEN 'REGULAR'
+	ELSE 'NEW'
+END AS customer_segment,
+CASE 
+	WHEN total_orders = 0 THEN 0
+	ELSE ROUND(CAST(total_sales AS FLOAT)/total_orders,2)
+END AS avg_order_value,
+CASE 
+	WHEN lifespan = 0 THEN 0
+	ELSE ROUND(CAST(total_sales AS FLOAT)/lifespan,2)
+END AS spending_per_month
+FROM customer_aggregaton
+
+--seelct thhe report
+SELECT * FROM gold.report_customer;
