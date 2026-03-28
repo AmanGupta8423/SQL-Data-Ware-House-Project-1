@@ -1,0 +1,15 @@
+--making the measures exploration table
+
+SELECT 'Total_Sales' AS measure_name ,SUM(sales_amount) AS measure_value FROM gold.fact_sales
+UNION ALL
+SELECT 'Total_Quantity_Sale' AS measure_name ,SUM(quantity) AS measure_value FROM gold.fact_sales
+UNION ALL
+SELECT 'Total_Orders' AS measure_name ,COUNT(DISTINCT(order_number)) AS measure_value FROM gold.fact_sales
+UNION ALL
+SELECT 'Total_Products_Selling' AS measure_name ,COUNT(DISTINCT(product_key)) AS measure_value FROM gold.fact_sales
+UNION ALL
+SELECT 'Total_Products' AS measure_name ,COUNT(DISTINCT(product_id)) AS measure_value FROM gold.dim_products
+UNION ALL
+SELECT 'Total_Customers_ordered' AS measure_name ,COUNT(DISTINCT(customer_key)) AS measure_value FROM gold.fact_sales
+UNION ALL
+SELECT 'Total_Customers' AS measure_name ,COUNT(DISTINCT(customer_id)) AS measure_value FROM gold.dim_customers
