@@ -1,0 +1,36 @@
+--Explore All Objects in the Database
+SELECT * FROM INFORMATION_SCHEMA.TABLES
+
+--Explore All Columns in the Database
+SELECT * FROM INFORMATION_SCHEMA.COLUMNS
+WHERE TABLE_NAME = 'dim_customers'
+
+-------------------------------------------------
+-------------------------------------------------
+--Dimension Exploration
+SELECT DISTINCT country FROM gold.dim_customers;
+SELECT DISTINCT category, subcategory, product_name FROM gold.dim_products ORDER BY category,subcategory,product_name;
+
+--------------------------------------------------
+--------------------------------------------------
+--Date Exploration
+SELECT MIN(order_date) AS first_order_date, MAX(order_date) AS last_order_date, DATEDIFF(MONTH,MIN(order_date),MAX(order_date)) AS order_ranger_month FROM gold.fact_sales
+
+SELECT MAX(birthdate) AS youngest_customer, MIN(birthdate) AS oldest_customer, DATEDIFF(YEAR, MIN(birthdate),GETDATE()) AS oldest_customer_age, DATEDIFF(YEAR, MAX(birthdate),GETDATE()) AS youngest_customer_age FROM gold.dim_customers;
+
+--------------------------------------------------------
+--------------------------------------------------------
+--Measure Exploration:
+
+--Total Sales,how amny item sold,avg_selling_price,total_orders
+SELECT SUM(sales_amount) AS total_sales,
+SUM(quantity) AS total_quantity_sales,
+SUM(sales_amount)/ SUM(quantity) AS averge_selling_price,
+COUNT(DISTINCT(order_number)) AS total_orders,
+COUNT(DISTINCT(product_key)) AS total_products_selling,
+COUNT(DISTINCT(customer_key)) AS total_customers_placed_order
+FROM gold.fact_sales;
+
+SELECT COUNT(DISTINCT(customer_id)) AS total_customers FROM gold.dim_customers
+SELECT COUNT(DISTINCT(product_id)) AS total_products FROM gold.dim_products
+
